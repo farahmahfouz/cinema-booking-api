@@ -1,9 +1,9 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { SigninUserDto } from './dto/signin-user-dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from './entities/user.entity';
+import { User, UserRole } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 
@@ -62,19 +62,91 @@ export class UsersService {
     };
   }
 
-  findAll() {
-    return `This action returns all users`;
+  async findAll() {
+    const users = await this.userRepo.find();
+    if (users.length === 0) {
+      throw new NotFoundException("Users doesn't exists")
+    }
+    return {
+      status: 'success',
+      count: users.length,
+      data: { users }
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async findOne(id: number) {
+    const user = await this.userRepo.findOneBy({ id });
+
+    if (!user) {
+      throw new NotFoundException("User doesn't exists");
+    }
+
+    const { password, ...result } = user;
+
+    return {
+      status: 'success',
+      data: { user: result }
+    }
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async update(id: number, updateUserDto: UpdateUserDto) {
+    const user = await this.userRepo.findOneBy({ id });
+
+    if (!user) {
+      throw new NotFoundException("User doesn't exist");
+    }
+
+    const safeData = {
+      name: updateUserDto.name,
+    };
+
+    this.userRepo.merge(user, safeData);
+
+    const updatedUser = await this.userRepo.save(user);
+
+    const { password, ...result } = updatedUser;
+
+    return {
+      status: 'success',
+      data: { user: result },
+    };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async promoteToAdmin(id: number) {
+    const user = await this.userRepo.findOneBy({ id });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      throw new BadRequestException('User is already admin');
+    }
+
+    user.role = UserRole.ADMIN;
+
+    await this.userRepo.save(user);
+
+    const { password, ...result } = user;
+
+    return {
+      status: 'success',
+      data: { user: result },
+    };
+  }
+
+  async remove(id: number) {
+    const user = await this.userRepo.findOneBy({ id });
+  
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+  
+    await this.userRepo.remove(user);
+  
+    return {
+      status: 'success',
+      message: 'User deleted successfully',
+    };
   }
 }

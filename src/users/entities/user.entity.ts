@@ -1,6 +1,6 @@
 import * as bcrypt from 'bcrypt';
 import { Reservation } from "src/reservations/entities/reservation.entity";
-import { BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { BeforeInsert, Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 export enum UserRole {
     USER = 'user',
@@ -21,7 +21,7 @@ export class User {
     @Column({ type: 'varchar', length: 100 })
     password: string;
 
-    @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+    @Column({ type: 'enum', enum: UserRole, default: UserRole.USER, select: false})
     role: UserRole;
 
     @CreateDateColumn({ type: 'timestamp' })
