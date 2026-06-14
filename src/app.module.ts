@@ -9,10 +9,12 @@ import { ShowtimesModule } from './showtimes/showtimes.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { SeatsModule } from './seats/seats.module';
 import { ReservationSeatModule } from './reservation-seat/reservation-seat.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CommonModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
@@ -23,7 +25,7 @@ import { ReservationSeatModule } from './reservation-seat/reservation-seat.modul
         password: config.get('DB_PASS'),
         database: config.get('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),

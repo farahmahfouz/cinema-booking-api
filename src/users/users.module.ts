@@ -9,16 +9,8 @@ import { User } from './entities/user.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
-      }),
-      inject: [ConfigService],
-    }),
   ],
   controllers: [UsersController],
   providers: [UsersService],
 })
-export class UsersModule {}
+export class UsersModule { }
