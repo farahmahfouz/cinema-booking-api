@@ -122,66 +122,60 @@ export class ShowtimesService {
     };
   }
 
-  async update(
-    id: number,
-    updateShowtimeDto: UpdateShowtimeDto,
-  ) {
-    const showtime =
-      await this.showtimeRepo.findOne({
-        where: { id },
-        relations: ['movie', 'hall'],
-      });
-
-    if (!showtime) {
-      throw new NotFoundException(
-        'Showtime not found',
-      );
-    }
-
+  async update(id: number, updateShowtimeDto: UpdateShowtimeDto) {
+    const showtime = await this.showtimeRepo.findOne({
+      where: { id },
+      relations: ['movie', 'hall'],
+    });
+  
+    if (!showtime) throw new NotFoundException('Showtime not found');
+  
     if (updateShowtimeDto.movie_id) {
-      const movie =
-        await this.movieRepo.findOneBy({
-          id: updateShowtimeDto.movie_id,
-        });
-
-      if (!movie) {
-        throw new NotFoundException(
-          'Movie not found',
-        );
-      }
-
+      const movie = await this.movieRepo.findOneBy({ id: updateShowtimeDto.movie_id });
+      if (!movie) throw new NotFoundException('Movie not found');
       showtime.movie = movie;
     }
-
+  
     if (updateShowtimeDto.hall_id) {
-      const hall =
-        await this.hallRepo.findOneBy({
-          id: updateShowtimeDto.hall_id,
-        });
-
-      if (!hall) {
-        throw new NotFoundException(
-          'Hall not found',
-        );
-      }
-
+      const hall = await this.hallRepo.findOneBy({ id: updateShowtimeDto.hall_id });
+      if (!hall) throw new NotFoundException('Hall not found');
       showtime.hall = hall;
     }
-
-    this.showtimeRepo.merge(
-      showtime,
-      updateShowtimeDto,
+  
+    const newStart = updateShowtimeDto.start_time
+      ? new Date(updateShowtimeDto.start_time)
+      : showtime.start_time;
+  
+    if (newStart < new Date()) {
+      throw new BadRequestException('Start time must be in the future');
+    }
+  
+    const newEnd = new Date(
+      newStart.getTime() + showtime.movie.duration * 60 * 1000,
     );
-
-    const updated =
-      await this.showtimeRepo.save(showtime);
-
-    return {
-      status: 'success',
-      data: {
-        showtime: updated,
-      },
-    };
+  
+    const conflict = await this.showtimeRepo
+      .createQueryBuilder('s')
+      .where('s.hall_id = :hallId', { hallId: showtime.hall.id })
+      .andWhere('s.id != :id', { id })
+      .andWhere('s.status = :status', { status: ShowtimeStatusEnum.ACTIVE })
+      .andWhere('s.start_time < :end', { end: newEnd })
+      .andWhere('s.end_time > :start', { start: newStart })
+      .getOne();
+  
+    if (conflict) {
+      throw new BadRequestException('Hall already has a showtime in this time slot');
+    }
+  
+    showtime.start_time = newStart;
+    showtime.end_time = newEnd;
+  
+    if (updateShowtimeDto.price) showtime.price = updateShowtimeDto.price;
+    if (updateShowtimeDto.status) showtime.status = updateShowtimeDto.status;
+  
+    const updated = await this.showtimeRepo.save(showtime);
+  
+    return { status: 'success', data: { showtime: updated } };
   }
 
   // Soft Delete

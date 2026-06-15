@@ -8,10 +8,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Movie } from './entities/movie.entity';
 import { UsersModule } from 'src/users/users.module';
 import { Genre } from 'src/genres/entities/genre.entity';
+import { Showtime } from 'src/showtimes/entities/showtime.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Movie, Genre]),
+    TypeOrmModule.forFeature([Movie, Genre, Showtime]),
     MulterModule.register({ storage: memoryStorage() }),
     UsersModule,
   ],
