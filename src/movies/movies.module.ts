@@ -7,10 +7,11 @@ import { UploadService } from 'src/common/services/upload.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Movie } from './entities/movie.entity';
 import { UsersModule } from 'src/users/users.module';
+import { Genre } from 'src/genres/entities/genre.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Movie]),
+    TypeOrmModule.forFeature([Movie, Genre]),
     MulterModule.register({ storage: memoryStorage() }),
     UsersModule,
   ],

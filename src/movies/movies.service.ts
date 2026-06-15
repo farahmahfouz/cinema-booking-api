@@ -4,30 +4,55 @@ import { UpdateMovieDto } from './dto/update-movie.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Movie } from './entities/movie.entity';
 import { Repository } from 'typeorm';
+import { Genre } from 'src/genres/entities/genre.entity';
 
 @Injectable()
 export class MoviesService {
-  constructor(@InjectRepository(Movie) private movieRepo: Repository<Movie>) { }
+  constructor(@InjectRepository(Movie) private movieRepo: Repository<Movie>, @InjectRepository(Genre)
+  private genreRepo: Repository<Genre>,) { }
 
   async create(createMovieDto: CreateMovieDto) {
-    const movie = await this.movieRepo.findOne({
-      where: { title: createMovieDto.title }
+    const existingMovie = await this.movieRepo.findOne({
+      where: { title: createMovieDto.title },
     });
 
-    if (movie) {
-      throw new HttpException('Movie already exists', 400);
+    if (existingMovie) {
+      throw new HttpException(
+        'Movie already exists',
+        400,
+      );
     }
-    const newMovie = this.movieRepo.create(createMovieDto);
-    await this.movieRepo.save(newMovie);
+
+    const genre = await this.genreRepo.findOneBy({
+      id: createMovieDto.genre,
+    });
+
+    if (!genre) {
+      throw new NotFoundException(
+        'Genre not found',
+      );
+    }
+
+    const movie = this.movieRepo.create({
+      title: createMovieDto.title,
+      description: createMovieDto.description,
+      image: createMovieDto.image,
+      duration: createMovieDto.duration,
+      genre,
+    });
+
+    await this.movieRepo.save(movie);
 
     return {
       status: 'success',
-      data: { movie: newMovie }
-    }
+      data: { movie },
+    };
   }
 
   async findAll() {
-    const movies = await this.movieRepo.find();
+    const movies = await this.movieRepo.find({
+      relations: ['genre', 'showtimes'],
+    });
     if (movies.length === 0) {
       throw new NotFoundException("Movies doesn't exists");
     }
@@ -40,8 +65,12 @@ export class MoviesService {
   }
 
   async findOne(id: number) {
-    const movie = await this.movieRepo.findOneBy({ id });
-    if (!movie) {
+    const movie = await this.movieRepo.findOne({
+      where: { id },
+      relations: ['genre', 'showtimes'],
+    });
+    
+     if (!movie) {
       throw new NotFoundException("Movie doesn't exists");
     }
     return {
@@ -56,7 +85,19 @@ export class MoviesService {
       throw new NotFoundException("Movie doesn't exists");
     }
 
-    this.movieRepo.merge(movie, updateMovieDto);
+    const { genre: genreId, ...rest } = updateMovieDto;
+
+    if (genreId !== undefined) {
+      const genre = await this.genreRepo.findOneBy({ id: genreId });
+
+      if (!genre) {
+        throw new NotFoundException('Genre not found');
+      }
+
+      movie.genre = genre;
+    }
+
+    this.movieRepo.merge(movie, rest);
 
     await this.movieRepo.save(movie);
     return {

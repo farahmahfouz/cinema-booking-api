@@ -8,7 +8,6 @@ import {
   Min,
   IsOptional,
 } from 'class-validator';
-
 export class CreateMovieDto {
   @ApiProperty({
     example: 'Inception',
@@ -43,4 +42,13 @@ export class CreateMovieDto {
   })
   @IsOptional()
   image?: string;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Genre ID',
+  })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  genre: number;
 }
