@@ -16,12 +16,6 @@ export class CreateShowtimeDto {
   start_time: Date;
 
   @ApiProperty({
-    example: '2026-06-20T20:30:00.000Z',
-  })
-  @IsDateString()
-  end_time: Date;
-
-  @ApiProperty({
     example: 150,
   })
   @IsInt()

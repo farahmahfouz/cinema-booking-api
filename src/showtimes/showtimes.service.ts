@@ -28,57 +28,54 @@ export class ShowtimesService {
     private readonly hallRepo: Repository<Hall>,
   ) { }
 
-  async create(
-    createShowtimeDto: CreateShowtimeDto,
-  ) {
+  async create(createShowtimeDto: CreateShowtimeDto) {
     const movie = await this.movieRepo.findOneBy({
       id: createShowtimeDto.movie_id,
     });
-
-    if (!movie) {
-      throw new NotFoundException(
-        'Movie not found',
-      );
-    }
-
+  
+    if (!movie) throw new NotFoundException('Movie not found');
+  
     const hall = await this.hallRepo.findOneBy({
       id: createShowtimeDto.hall_id,
     });
-
-    if (!hall) {
-      throw new NotFoundException(
-        'Hall not found',
-      );
+  
+    if (!hall) throw new NotFoundException('Hall not found');
+  
+    const start = new Date(createShowtimeDto.start_time);
+    const end = new Date(start.getTime() + movie.duration * 60 * 1000);
+  
+    if (start < new Date()) {
+      throw new BadRequestException('Start time must be in the future');
     }
-
-    if (
-      new Date(createShowtimeDto.start_time) >=
-      new Date(createShowtimeDto.end_time)
-    ) {
+  
+    const conflict = await this.showtimeRepo
+      .createQueryBuilder('s')
+      .where('s.hall_id = :hallId', { hallId: hall.id })
+      .andWhere('s.status = :status', { status: ShowtimeStatusEnum.ACTIVE })
+      .andWhere('s.start_time < :end', { end })
+      .andWhere('s.end_time > :start', { start })
+      .getOne();
+  
+    if (conflict) {
       throw new BadRequestException(
-        'Start time must be before end time',
+        'Hall already has a showtime in this time slot',
       );
     }
-
+  
     const showtime = this.showtimeRepo.create({
-      start_time: createShowtimeDto.start_time,
-      end_time: createShowtimeDto.end_time,
+      start_time: start,
+      end_time: end,
       price: createShowtimeDto.price,
-      status:
-        createShowtimeDto.status ??
-        ShowtimeStatusEnum.ACTIVE,
+      status: createShowtimeDto.status ?? ShowtimeStatusEnum.ACTIVE,
       movie,
       hall,
     });
-
-    const saved =
-      await this.showtimeRepo.save(showtime);
-
+  
+    const saved = await this.showtimeRepo.save(showtime);
+  
     return {
       status: 'success',
-      data: {
-        showtime: saved,
-      },
+      data: { showtime: saved },
     };
   }
 
